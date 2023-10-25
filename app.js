@@ -2,12 +2,19 @@ const {App} = require('@slack/bolt');
 const {WebClient} = require('@slack/web-api');
 const { Pool } = require('pg');
 
-// Connect to the Heroku Postgres database
+// // Connect to the Heroku Postgres database
+// const pool = new Pool({
+//   connectionString: process.env.DATABASE_URL,
+//   ssl: {
+//     rejectUnauthorized: false
+//   }
+// });
+
+// TODO: switch back to Heroku Postgres pool setup when local testing finished
+// Connect to the local Postgres database for testing
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
+	connectionString: process.env.DATABASE_URL,
+	ssl: false
 });
 
 // Callback on any errors when querying the Database
@@ -25,6 +32,7 @@ const app = new App({
     socketMode: true,
     appToken: process.env.SLACK_APP_TOKEN
 });
+
 
 // App Home opened - response
 app.event('app_home_opened', async ({ event, client, context }) => {
@@ -144,7 +152,7 @@ app.message(async ({message, say}) => {
     if (!message.thread_ts && !message.hidden) {
 	let channelName = await getChannelName(message.channel);
 	console.debug("Handling message for channel: " + channelName);
-	// Get the list of things to check for for this channel
+	// Get the list of things to check for this channel
 	let responseList = await getSlackResponsesForChannel(channelName);
 	    // Get the default response in case we don't match any of the things to check for above
 	    let response, messageId = null;
@@ -223,7 +231,7 @@ async function getSlackResponsesForChannel(channelName)
 {
 	// Go get the list of regular expressions for this slack channel
 	let responseList = null;
-	//console.debug("Calling to DB. Channel: " + channelName);
+	// console.debug("Calling to DB. Channel: " + channelName);
 	const results = await pool.query('SELECT id, regular_expression__c as regex, response__c as response, show_buttons__c as show_buttons, success_button_label__c as success_label, fail_button_label__c as fail_label FROM salesforce.Slack_Message_Response__c WHERE regular_expression__c IS NOT NULL AND Is_Active__c = true AND channel__c = $1 ORDER BY ORDER__c;', [channelName]);
 	if (results.rows) {
 		console.debug("Found results for slack responses for channel: "+ channelName);

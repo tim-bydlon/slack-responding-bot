@@ -22,9 +22,8 @@ const web = new WebClient(process.env.SLACK_BOT_TOKEN);
 const app = new App({
 	token: process.env.SLACK_BOT_TOKEN,
 	signingSecret: process.env.SLACK_SIGNING_SECRET,
-	// Socket Mode doesn't listen on a port, but in case you want your app to respond to OAuth,
-	// you still need to listen on some port!
-	port: process.env.PORT || 3000
+    socketMode: true,
+    appToken: process.env.SLACK_APP_TOKEN
 });
 
 // App Home opened - response
@@ -163,7 +162,7 @@ app.message(async ({message, say}) => {
 			messageId = slackResponse.id;
 			successButtonLabel = slackResponse.success_label ? slackResponse.success_label : BOT_RESPONSE_HELPED_BUTTON;
 			failButtonLabel = slackResponse.fail_label ? slackResponse.fail_label : BOT_RESPONSE_DIDNT_HELP_BUTTON;
-			break; 
+			break;
 		}
 	    }
 	    // If we didn't set a response above then get the default if there is one
@@ -213,7 +212,7 @@ async function getDefaultMessage(message, channelName)
 		}
 	}
 	// Return an inline object with the response and the show/hide buttons boolean value
-	return returnObj; 
+	return returnObj;
 }
 
 
@@ -314,7 +313,7 @@ async function sendReply(message, say, phrase, showButtons, successButtonLabel, 
 		],
 		text: phrase,
 		thread_ts: threadTs
-	    });    
+	    });
     }
 }
 
@@ -333,7 +332,7 @@ async function incrementSuccessCount(messageId) {
 	{
 		const results = await pool.query('UPDATE salesforce.Slack_Message_Response__c SET success__c = success__c + 1 WHERE id = $1;', [messageId]);
 	}
-	
+
 }
 
 // Function that increments the count for the number of times the fail button was clicked for this message
@@ -342,7 +341,7 @@ async function incrementFailCount(messageId) {
 	{
 		const results = await pool.query('UPDATE salesforce.Slack_Message_Response__c SET fail__c = fail__c + 1 WHERE id = $1;', [messageId]);
 	}
-	
+
 }
 
 // Called after the 'this helped me' button is clicked
@@ -370,16 +369,16 @@ async function handleButtonClick(body, say, success) {
 	}
 	// Go find the original Message that was sent as the reply for this thread
 	messageId = await getOriginalMessageId(threadTs);
-	
+
 	// Use that message ID to get the response that we should send back to the user after this button click
 	let responseObj = await getButtonResponse(success, messageId);
-	
+
 	// Send the response in thread
 	await say({
 	    text: responseObj.text,
 	    thread_ts: threadTs
 	});
-	
+
 	// Add the configured reaction to the original message
 	try {
 	    // Call reactions.add with the built-in client
@@ -408,7 +407,7 @@ async function handleButtonClick(body, say, success) {
 // Returns what to response to the button click with based on the button and the original response
 async function getButtonResponse(success, messageId)
 {
-	let responseObj = null; 
+	let responseObj = null;
 	if (success)
 	{
 		// Update the counter in the DB for this message ID
@@ -418,13 +417,13 @@ async function getButtonResponse(success, messageId)
 	}
 	else
 	{
-		
+
 		// Update the counter in the DB for this message ID
 		incrementFailCount(messageId);
 		// Set default in case values aren't set later
 		responseObj = { text: BOT_RESPONSE_DIDNT_HELP, icon: BOT_RESPONSE_DIDNT_HELP_EMOTICON};;
 	}
-	
+
 	// If we passed a message, go get it's values from the DB
 	if (messageId)
 	{
@@ -444,11 +443,11 @@ async function getButtonResponse(success, messageId)
 				responseObj.text = slackResponse.fail_message;
 				responseObj.icon = slackResponse.fail_reaction;
 			}
-			
+
 		}
 
 	}
-	
+
 	return responseObj;
 }
 

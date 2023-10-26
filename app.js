@@ -379,7 +379,7 @@ async function handleButtonClick(body, say, success) {
 	messageId = await getOriginalMessageId(threadTs);
 
 	// Use that message ID to get the response that we should send back to the user after this button click
-	let responseObj = await getButtonResponse(success, messageId);
+	let responseObj = await getButtonResponse(success, messageId, body.channel);
 
 	// Send the response in thread
 	await say({
@@ -413,7 +413,7 @@ async function handleButtonClick(body, say, success) {
 }
 
 // Returns what to response to the button click with based on the button and the original response
-async function getButtonResponse(success, messageId)
+async function getButtonResponse(success, messageId, channel)
 {
 	let responseObj = null;
 	if (success)
@@ -445,11 +445,19 @@ async function getButtonResponse(success, messageId)
 				responseObj.text = slackResponse.success_message;
 				responseObj.icon = slackResponse.success_reaction;
 			}
+			//TODO: add in question assignment handling here
 			else if (slackResponse)
 			{
 				// Failed responses
 				responseObj.text = slackResponse.fail_message;
 				responseObj.icon = slackResponse.fail_reaction;
+				// Replace auto-assign tag with a random contact assigned to the channel
+				if (responseObj.text.includes("{Random_Assign}")) {
+					const channel_contact_ids = await pool.query('SELECT slack_id__c FROM salesforce.Contact__c WHERE channels__c = ANY($1);', [channel.id]);
+					const randomIndex = Math.floor(Math.random() * channel_contact_ids.length);
+					const assigned_contact_id = channel_contact_ids[randomIndex]
+					responseObj.text = responseObj.text.replace("{Random_Assign}", assigned_contact_id)
+				}
 			}
 
 		}
